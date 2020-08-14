@@ -62,13 +62,17 @@ namespace VolControl
         [DllImport(dllPath, CallingConvention = CallingConvention.StdCall)]
         public static extern Int32 VBVMR_Logout();
 
-        [DllImport(dllPath, CallingConvention = CallingConvention.StdCall)]
+        [DllImport(dllPath, CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall)]
         private static extern Int32 VBVMR_GetParameterFloat([In] byte[] szParamName, ref float pValue);
 
 
 
-        [DllImport(dllPath, CallingConvention = CallingConvention.StdCall)]
+        [DllImport(dllPath, CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall)]
         private static extern Int32 VBVMR_SetParameterFloat([In] byte[] szParamName, [In] float Value);
+
+
+        [DllImport(dllPath, CallingConvention = CallingConvention.StdCall)]
+        private static extern Int32 VBVMR_IsParametersDirty();
 
 
 
@@ -100,6 +104,13 @@ namespace VolControl
         }
 
 
+
+        /// <summary>
+        /// Set a generic parameter in Voicemeeter syntax
+        /// </summary>
+        /// <param name="name">query command</param>
+        /// <param name="value">value to be set</param>
+        /// <returns>status - 0 on success</returns>
         public static Int32 SetParameterFloat(string name, float value)
         {
             byte[] buff = StringToBytes(name);
@@ -109,27 +120,34 @@ namespace VolControl
         }
 
 
-        //public static Int32 GetParameterFloat(string name)
-        //{
-        //    byte[] buff = StringToBytes(name);
+        /// <summary>
+        /// Get a generic parameter using Voicemeeter syntax
+        /// </summary>
+        /// <param name="name">query command</param>
+        /// <param name="value">output parameter</param>
+        /// <returns>status - 0 on success</returns>
+        public static Int32 GetParameterFloat(string name, ref float value)
+        {
 
-        //    float gain = 0;
+            // must be called before reading a parameter
+            // the result is ignored, as this handler is stateless
+            var dirty = VBVMR_IsParametersDirty();
 
+            byte[] buff = StringToBytes(name);
+            Int32 res = VBVMR_GetParameterFloat(buff, ref value);
 
-        //    Int32 res = VBVMR_GetParameterFloat(buff, ref gain);
-
-        //    return res;
-        //}
+            return res;
+        }
 
 
 
         /// <summary>
         /// Mute/Unmute the given channel
         /// </summary>
-        /// <param name="channel">Audiostrip (1 offset)</param>
+        /// <param name="channel">Audiostrip (0 offset)</param>
         /// <param name="is_mute">true for mute, false for unmute</param>
-        /// <returns></returns>
-        public static Int32 Mute(int channel, bool is_mute = true)
+        /// <returns>status - 0 on success</returns>
+        public static Int32 SetMute(int channel, bool is_mute = true)
         {
             string name = "Strip[" + channel + "].Mute";
             float mute = is_mute ? 1 : 0;
@@ -140,11 +158,34 @@ namespace VolControl
 
 
         /// <summary>
+        /// Get the mute status of the given channel
+        /// </summary>
+        /// <param name="channel">Audiostrip (0 offset)</param>
+        /// <param name="is_mute">ref, true for mute, false for unmute</param>
+        /// <returns>status - 0 on success</returns>
+        public static Int32 GetMute(int channel, ref bool is_mute)
+        {
+            string name = "Strip[" + channel + "].Mute";
+
+            float is_mute_fl = -1;
+            Int32 status = GetParameterFloat(name, ref is_mute_fl);
+            status = GetParameterFloat(name, ref is_mute_fl);
+
+            if (status == 0)
+            {
+                is_mute = is_mute_fl == 0 ? false : true;
+            }
+
+            return status;
+        }
+
+
+        /// <summary>
         /// Set the gain of the specified channel
         /// </summary>
-        /// <param name="channel">Audiostrip (1 offset)</param>
+        /// <param name="channel">Audiostrip (0 offset)</param>
         /// <param name="gain">in dB, [-60, 12]</param>
-        /// <returns></returns>
+        /// <returns>status - 0 on success</returns>
         public static Int32 SetGain(int channel, float gain = 0.0f)
         {
             string name = "Strip[" + channel + "].gain";
@@ -153,18 +194,16 @@ namespace VolControl
         }
 
 
-
-        public static Int32 GetGain(int channel, out float gain)
+        /// <summary>
+        /// Get the gain of the specified channel
+        /// </summary>
+        /// <param name="channel">Audiostrip (0 offset)</param>
+        /// <param name="gain">result in dB, [-60, 12]</param>
+        /// <returns>status - 0 on success</returns>
+        public static Int32 GetGain(int channel, ref float gain)
         {
-            //string name = "Strip[0].gain";
-            //byte[] buff = StringToBytes(name);
-
-
-            //Int32 res = VBVMR_GetParameterFloat(buff, gain);
-
-            //return res;
-            gain = 0;
-            return 0;
+            string name = "Strip[" + channel + "].gain";
+            return GetParameterFloat(name, ref gain);
         }
 
     }

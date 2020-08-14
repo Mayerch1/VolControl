@@ -8,6 +8,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Win32.Registry" Version="4.7.0" />
     <PackageReference Include="SharpDX.DirectInput" Version="4.2.0" />
+    <PackageReference Include="System.Reflection" Version="4.3.0" />
     <PackageReference Include="System.Windows.Extensions" Version="4.7.0" />
   </ItemGroup>
 

@@ -3,21 +3,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Media;
+using System.Reflection;
 using System.Text;
+using System.Threading;
 
 namespace VolControl
 {
     public static class MediaControl
     {
-        /// <summary>
-        /// Determins which strip is controlled by the potentiometers
-        /// </summary>
-        public enum Mode
-        {
-            GH, // discord, default (out)
-            AB // mic, vcable (in)
-            
-        }
+       
 
 
         private static bool loggedIn;
@@ -53,14 +47,14 @@ namespace VolControl
         }
 
 
-        private static float Map(this int value, float fromSource, float toSource, float fromTarget, float toTarget)
+        private static float Map(int value, float fromSource, float toSource, float fromTarget, float toTarget)
         {
             return (value - fromSource) / (toSource - fromSource) * (toTarget - fromTarget) + fromTarget;
         }
 
 
 
-        public static void Potentiometer(int id, Mode mode, int last, int current)
+        public static void Potentiometer(int id, int last, int current)
         {
             if(last == current)
             {
@@ -73,23 +67,24 @@ namespace VolControl
 
             float db = 0;
 
+
             // mid point is at 3/4 of poti
-            // 0 => 40 151
-            // -- => 39 000-
-            // ++ => 41 000+
-            if(current >= 39000 && current <= 41000)
+            // this is 768 in arduino [0, 1024] scale
+            // resulting in 49199 in [0, 65535] scale
+            if(current == 49134)
             {
+                // arduino introduces deadzone around this value
                 db = 0; // neutral position
             }
-            else if(current > 41000)
+            else if(current > 49134)
             {
-                db = Map(current, 41000, 65535, 0, 12);
+                db = Map(current, 52000, 65535, 0, 12);
             }
             else
             {
                 // voicemeeter supports down to -60
                 // however -40 seems to be enough for now (-> higher precision on knob)
-                db = Map(current, 0, 39000, -40, 0);
+                db = Map(current, 0, 46000, -40, 0);
             }
 
 
@@ -98,26 +93,95 @@ namespace VolControl
         }
 
 
-        public static void MicSwitch(bool lastState, bool currentState)
+        /// <summary>
+        /// Unmute/Mute microphone, might double-mute when sample rate is too high
+        /// Checks with current state of Voicemeeter and acts on change
+        /// </summary>
+        /// <param name="is_mute">true for muting the mic</param>
+        public static void MicSwitch(bool is_mute)
         {
-            if(lastState == currentState)
+
+            Login();
+
+            bool last_mute = false;
+            VoiceMeeterRemoteAPI.GetMute(Settings.micLane, ref last_mute);
+
+
+            if(last_mute == is_mute)
             {
                 return;
             }
 
 
-            if (currentState)
+            if (is_mute)
             {
                 Login();
-                VoiceMeeterRemoteAPI.Mute(Settings.micLane, false);
-                PlaySound(Settings.UnMuteSound);
+                var succes = VoiceMeeterRemoteAPI.SetMute(Settings.micLane, true);
+                if (succes == 0)
+                {
+                    PlaySound(Settings.MuteSound);
+                }
+                else
+                {
+                    SystemSounds.Asterisk.Play();
+                }
             }
             else
             {
                 Login();
-                VoiceMeeterRemoteAPI.Mute(Settings.micLane, true);
-                PlaySound(Settings.MuteSound);
+                var succes = VoiceMeeterRemoteAPI.SetMute(Settings.micLane, false);
+
+                if (succes == 0)
+                {
+                    PlaySound(Settings.UnMuteSound);
+                }
+                else
+                {
+                    SystemSounds.Asterisk.Play();
+                }
             }
+
+            // wait until command is received
+            //Thread.Sleep(1000);
+        }
+
+
+        public static void MicToggle()
+        {
+            Login();
+
+            bool last_muted = false;
+            VoiceMeeterRemoteAPI.GetMute(Settings.micLane, ref last_muted);
+            var succes = VoiceMeeterRemoteAPI.SetMute(Settings.micLane, !last_muted);
+
+
+            if (!last_muted)
+            {
+                // now muted
+                if (succes == 0)
+                {
+                    PlaySound(Settings.MuteSound);
+                }
+                else
+                {
+                    SystemSounds.Asterisk.Play();
+                }
+            }
+            else
+            {
+                // now unmuted
+                if (succes == 0)
+                {
+                    PlaySound(Settings.UnMuteSound);
+                }
+                else
+                {
+                    SystemSounds.Asterisk.Play();
+                }
+            }
+
+            // wait until command is received
+            //Thread.Sleep(1000);
         }
 
     }
