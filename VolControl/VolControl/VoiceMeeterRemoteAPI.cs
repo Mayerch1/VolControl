@@ -134,7 +134,10 @@ namespace VolControl
             var dirty = VBVMR_IsParametersDirty();
 
             byte[] buff = StringToBytes(name);
+
+            // somehow the first readout is not reliable
             Int32 res = VBVMR_GetParameterFloat(buff, ref value);
+            res = VBVMR_GetParameterFloat(buff, ref value);
 
             return res;
         }
@@ -168,8 +171,9 @@ namespace VolControl
             string name = "Strip[" + channel + "].Mute";
 
             float is_mute_fl = -1;
+
+            
             Int32 status = GetParameterFloat(name, ref is_mute_fl);
-            status = GetParameterFloat(name, ref is_mute_fl);
 
             if (status == 0)
             {

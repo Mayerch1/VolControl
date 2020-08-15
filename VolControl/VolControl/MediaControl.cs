@@ -11,10 +11,15 @@ namespace VolControl
 {
     public static class MediaControl
     {
-       
-
 
         private static bool loggedIn;
+        private static bool is_muted = false;
+        private static bool ppt_active = false;
+
+        private static bool toggle_override = false;
+        private static bool ppt_override = false;
+
+
         private static SoundPlayer soundPlayer =  new SoundPlayer();
 
         private static void Login()
@@ -25,8 +30,11 @@ namespace VolControl
                 if(res == 0)
                 {
                     loggedIn = true;
+                    SyncSettings();
                 }
             }
+
+            
         }
 
 
@@ -37,6 +45,11 @@ namespace VolControl
                 VoiceMeeterRemoteAPI.Logout();
                 loggedIn = false;
             }
+        }
+
+        private static void SyncSettings()
+        {
+            VoiceMeeterRemoteAPI.GetMute(Settings.micLane, ref MediaControl.is_muted);
         }
 
 
@@ -103,16 +116,6 @@ namespace VolControl
 
             Login();
 
-            bool last_mute = false;
-            VoiceMeeterRemoteAPI.GetMute(Settings.micLane, ref last_mute);
-
-
-            if(last_mute == is_mute)
-            {
-                return;
-            }
-
-
             if (is_mute)
             {
                 Login();
@@ -146,43 +149,87 @@ namespace VolControl
         }
 
 
-        public static void MicToggle()
+
+        public static void MicStateMachine(bool ppt, bool mute_switch, bool mic_toggle)
         {
             Login();
 
-            bool last_muted = false;
-            VoiceMeeterRemoteAPI.GetMute(Settings.micLane, ref last_muted);
-            var succes = VoiceMeeterRemoteAPI.SetMute(Settings.micLane, !last_muted);
 
 
-            if (!last_muted)
+
+
+
+            // ppt is overriding everything
+            if(ppt && is_muted)
             {
-                // now muted
-                if (succes == 0)
-                {
-                    PlaySound(Settings.MuteSound);
-                }
-                else
-                {
-                    SystemSounds.Asterisk.Play();
-                }
+                MicSwitch(false);
+                is_muted = false;
+
+                ppt_active = true;
+                ppt_override = true;
+
+                toggle_override = false;
+                return;
             }
-            else
+            else if(ppt && !is_muted)
             {
-                // now unmuted
-                if (succes == 0)
+                // ensures that mic is muted on ppt release 
+                // even when mic wasn't muted before
+                ppt_active = true;
+                ppt_override = true;
+
+                toggle_override = false;
+                return;
+            }
+            else if(!ppt && ppt_active)
+            {
+                if (!is_muted)
                 {
-                    PlaySound(Settings.UnMuteSound);
+                    // ppt forces into mute state, ignoring other values
+                    MicSwitch(true);
+                    is_muted = true;
                 }
-                else
-                {
-                    SystemSounds.Asterisk.Play();
-                }
+
+                // keep override active
+                ppt_active = false;
+                return;
             }
 
-            // wait until command is received
-            //Thread.Sleep(1000);
+
+
+            // toggle cannot override mute_switch in mute state
+            if(mute_switch)
+            {
+                ppt_override = false;
+                toggle_override = false;
+
+                if (!is_muted)
+                {
+                    MicSwitch(true);
+                    is_muted = true;
+                }
+
+                return;
+            }
+            // when mute switch is off toggle could override
+            else if(!mute_switch && !toggle_override && !ppt_override && is_muted)
+            {
+                MicSwitch(false);
+                is_muted = false;
+                return;
+            }
+            else if (mic_toggle)
+            {
+                is_muted = !is_muted;
+                MicSwitch(is_muted);
+
+                ppt_override = false;
+                toggle_override = true;
+                return;
+            }
         }
+
+
 
     }
 }

@@ -107,7 +107,7 @@ namespace VolControl
             // if a single device reports mute, it is overriding all others
             // therefore this is only set after the loop iteration
             // -- however ppt is overriding mute
-            bool? is_mute = null;
+            bool is_mute = false;
             bool is_ppt = false;
 
             // toggle mute does NOT override is_mute or ppt
@@ -156,14 +156,7 @@ namespace VolControl
                     // inverted logic, as mic is only active when signal is present
                     bool is_muted_switch = !stick.currentState.Buttons[mute_switch];
 
-                    if (is_mute is null)
-                    {
-                        is_mute = is_muted_switch;
-                    }
-                    else
-                    {
-                        is_mute |= is_muted_switch;
-                    }
+                    is_mute |= is_muted_switch;
                 }
 
 
@@ -213,37 +206,7 @@ namespace VolControl
 
 
 
-            if (toggle_mute)
-            {
-                MediaControl.MicToggle();
-            }
-
-
-            // is_ppt is overriding mute (when true)
-            // is_mute can override toggle
-            if (is_ppt)
-            {
-                MediaControl.MicSwitch(false);
-            }
-            else
-            {
-                if(is_mute is bool is_mute_bool)
-                {
-                    if (is_mute_bool)
-                    {
-                        MediaControl.MicSwitch(true);
-                    }
-                    // do not override toggle
-                    // when toggle do nothing
-                    else if (!toggle_mute)
-                    {
-                        
-                        MediaControl.MicSwitch(is_mute_bool);
-                    }
-                }
-
-            }
-
+            MediaControl.MicStateMachine(is_ppt, is_mute, toggle_mute);
         }
 
 
@@ -257,8 +220,6 @@ namespace VolControl
 
         static void Main(string[] args)
         {
-
-
             AquireSticks();
 
             

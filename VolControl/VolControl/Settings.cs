@@ -57,7 +57,7 @@ namespace VolControl
         public int? ppt = null; // push-to-talk
         public int? mute_toggle = null;
 
-        public Slider[] slider;
+        public Slider[] slider = new Slider[0];
     }
 
 
@@ -74,10 +74,10 @@ namespace VolControl
 
         public static readonly Dictionary<string, StickMapping> stickMap = new Dictionary<string, StickMapping>
         {
-            {"80372341-0000-0000-0000-504944564944", 
+            {"80372341-0000-0000-0000-504944564944",
                 new StickMapping{
 
-                    mute_switch =0,
+                    mute_switch = 0,
 
                     slider = new StickMapping.Slider[]{
                         new StickMapping.Slider
@@ -112,14 +112,23 @@ namespace VolControl
                         }
 
                     }
-                } 
+                }
             },
-            
-            {"b66e044f-0000-0000-0000-504944564944", 
+
+            {"b66e044f-0000-0000-0000-504944564944",
                 new StickMapping{
                     mute_toggle = 4,
                 }
+            },
+
+            {"0404044f-0000-0000-0000-504944564944",
+                new StickMapping
+                {
+                    ppt = 3,
+                    mute_toggle = 4
+                }
             }
+
         };
 
 
