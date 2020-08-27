@@ -1,17 +1,78 @@
-﻿using SharpDX.DirectInput;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using SharpDX.DirectInput;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Media;
+using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.Json.Serialization;
 using System.Threading;
+using System.Xml;
 
 namespace VolControl
 {
 
     class Program
     {
+        public static void LoadSettings()
+        {
+            if (!File.Exists("Settings.json"))
+            {
+                return;
+            }
+
+            var json = System.IO.File.ReadAllText("Settings.json");
+            var parsed = JArray.Parse(json);
+
+
+            foreach(var device in parsed)
+            {
+                StickMapping map = new StickMapping();
+
+                string guid = (string)device["guid"];
+
+                if(guid != null)
+                {
+                    // toggle switches can be null (not-set)
+                    map.ppt = (int?)device["ptt_button"];
+                    map.mute_switch = (int?)device["mute_switch"];
+                    map.mute_toggle = (int?)device["mute_toggle"];
+
+
+                    // iterate over slider array
+                    // make sure that all necessary properties are set
+                    var slidersObj = device["sliders"];
+                    if(slidersObj is JArray sliders)
+                    {
+                        foreach(var slider in sliders)
+                        {
+                            int? idx = (int?)slider["index"];
+                            string btn = (string)slider["button"];
+
+
+                            // guarantee not null
+                            if(idx != null && btn != null)
+                            {
+                                map.slider.Add(new StickMapping.Slider
+                                {
+                                    index = (int)idx,
+                                    Button = btn
+                                });
+
+                            }
+
+                        }
+                    }
+                    Settings.stickMap.Add(guid, map);
+                }
+
+            }
+
+        }
 
 
         public static Joystick GetStick(string refGuid)
@@ -58,14 +119,16 @@ namespace VolControl
         /// <summary>
         /// Connect all connected sticks out of the inputSticks list
         /// </summary>
-        public static void AquireSticks()
+        public static int AquireSticks()
         {
+            int addedSticks = 0;
+            int oldConnectedCount = Settings.inputSticks.Count;
 
             // don't do anything if every controller in the list is already connected
             // and if no prev. connected controller was disconnected
-            if(Settings.inputSticks.Count == Settings.stickMap.Count)
+            if(oldConnectedCount == Settings.stickMap.Count)
             {
-                return;
+                return addedSticks;
             }
 
 
@@ -93,8 +156,11 @@ namespace VolControl
                     stickData.stick.Acquire();
 
                     Settings.inputSticks.Add(guid, stickData);
+                    addedSticks++;
                 }
             }
+
+            return addedSticks;
         }
 
 
@@ -189,13 +255,10 @@ namespace VolControl
                     var currAxis = stick.GetCurrentStateByString(slider.Button);
 
 
-                    if(lastAxis is int && currAxis is int)
+                    // only do something when Axis changed more than 10
+                    if(lastAxis is int && currAxis is int && Math.Abs((int)lastAxis - (int)currAxis) > 10)
                     {
                         MediaControl.Potentiometer(slider.index, (int)lastAxis, (int)currAxis);
-                    }
-                    else
-                    {
-                        Console.WriteLine("ERR");
                     }
                 }
 
@@ -213,15 +276,29 @@ namespace VolControl
 
         public static void FailSafe()
         {
-            MediaControl.MicSwitch(false);
-            SystemSounds.Asterisk.Play();
+            MediaControl.MicSwitch(true);
         }
+
 
 
         static void Main(string[] args)
         {
-            AquireSticks();
+            // OS specific code in this helper
+            WindowsTrayIcon.Init();
+          
+            LoadSettings();
+            int loadedSticks = AquireSticks();
 
+            // do not show notification on app start
+            // (only on error)
+            if(loadedSticks == 0)
+            {
+                WindowsTrayIcon.NoStickWarning(Settings.stickMap.Count);
+            }
+            else
+            {
+                WindowsTrayIcon.UpdateTrayIconList(Settings.inputSticks, Settings.stickMap.Count);
+            }
             
             int elapsed_ms = 0;
 
@@ -250,6 +327,10 @@ namespace VolControl
                         Settings.inputSticks.Remove(pair.Key);
 
 
+                        // no more than 1 device can be disconnected at a time
+                        WindowsTrayIcon.UpdateTrayIconList(Settings.inputSticks, Settings.stickMap.Count);
+                        WindowsTrayIcon.RmController(1, Settings.inputSticks.Count, Settings.stickMap.Count);
+
                         // modifying iterated list demands abort of foreach
                         // otherwise access error can occur
                         break;
@@ -266,13 +347,25 @@ namespace VolControl
                 elapsed_ms += wait_time;
 
 
+
+                if(elapsed_ms > 1000)
+                {
+                    // update tray icon once per second (only when status changed)
+                    WindowsTrayIcon.UpdateTrayIconMic(MediaControl.GetMuteStatus(), MediaControl.GetPttStatus());
+                }
+
                 // scan for new controllers every 30 seconds
                 // this helps when e.g. a wheel with mute button is plugged in after boot
                 if(elapsed_ms > 30000)
                 {
                     elapsed_ms = 0;
-                    AquireSticks();
+                    int addedSticks = AquireSticks();
 
+                    if (addedSticks > 0)
+                    {
+                        WindowsTrayIcon.UpdateTrayIconList(Settings.inputSticks, Settings.stickMap.Count);
+                        WindowsTrayIcon.AddControler(addedSticks, Settings.inputSticks.Count, Settings.stickMap.Count);
+                    }
                 }
             }
 

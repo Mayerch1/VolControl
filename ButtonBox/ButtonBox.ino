@@ -35,6 +35,9 @@ Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_GAMEPAD,
 #define POT_0DB_DEADZONE_PCT 6
 #define POT_0DB (uint16_t)(1023*0.75)
 
+// 10/1024 is a deadzone of 0.9%, low enough
+#define POT_JITTER_DEADZONE_ABS 10
+
 
 
 JoystickButton muteButton(0);
@@ -129,11 +132,15 @@ void loop() {
 
 
     if(mic_active == mic_active_last &&\
-        (pot1 <= (pot1_last + 10) && pot1 >= (pot1_last - 10)) &&\
-        (pot2 <= (pot2_last + 10) && pot2 >= (pot2_last - 10))){
+        (pot1 <= (pot1_last + POT_JITTER_DEADZONE_ABS) && pot1 >= (pot1_last - POT_JITTER_DEADZONE_ABS)) &&\
+        (pot2 <= (pot2_last + POT_JITTER_DEADZONE_ABS) && pot2 >= (pot2_last - POT_JITTER_DEADZONE_ABS))){
         
-        // do nothing
-        // allow a tolerance of ~5% for poti's before assuming update
+        // eliminate the jitter
+        // IMPORTANT: if the deadzone is 10, a change by 9 is ignored
+        // however, two consecutive changes of 6 each, are counted as 12 at the second iteration
+        // this prevents 'sticking' of the poti when moving it slowly
+        pot1 = pot1_last;
+        pot2 = pot2_last;
     }
     else{
         last_update_ms = millis();

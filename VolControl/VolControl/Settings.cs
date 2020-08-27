@@ -57,82 +57,24 @@ namespace VolControl
         public int? ppt = null; // push-to-talk
         public int? mute_toggle = null;
 
-        public Slider[] slider = new Slider[0];
+        public List<Slider> slider = new List<Slider>();
     }
 
 
     public static class Settings
     {
-        public static string MuteSound = @"F:\Christian\Documents\Code\Arduino\VolControl\VolControl\VolControl\res\mute.wav";
-        public static string UnMuteSound = @"F:\Christian\Documents\Code\Arduino\VolControl\VolControl\VolControl\res\unMute.wav";
+        public static string MuteSound = "res/mute.wav";
+        public static string UnMuteSound = "res/unMute.wav";
 
 
         public const int pollRateHz = 10;
         public const int micLane = 0;
 
 
-
-        public static readonly Dictionary<string, StickMapping> stickMap = new Dictionary<string, StickMapping>
-        {
-            {"80372341-0000-0000-0000-504944564944",
-                new StickMapping{
-
-                    mute_switch = 0,
-
-                    slider = new StickMapping.Slider[]{
-                        new StickMapping.Slider
-                        {
-                            index =7,
-                            Button = "X"
-                        },
-                        new StickMapping.Slider
-                        {
-                            index = 6,
-                            Button = "Y"
-                        },
-                        new StickMapping.Slider
-                        {
-                            index = 0,
-                            Button = "Z"
-                        },
-                        new StickMapping.Slider
-                        {
-                            index = 1,
-                            Button = "RotationX"
-                        },
-                        new StickMapping.Slider
-                        {
-                            index = 2,
-                            Button = "RotationY"
-                        },
-                        new StickMapping.Slider
-                        {
-                            index = 3,
-                            Button = "RotationZ"
-                        }
-
-                    }
-                }
-            },
-
-            {"b66e044f-0000-0000-0000-504944564944",
-                new StickMapping{
-                    mute_toggle = 4,
-                }
-            },
-
-            {"0404044f-0000-0000-0000-504944564944",
-                new StickMapping
-                {
-                    ppt = 3,
-                    mute_toggle = 4
-                }
-            }
-
-        };
-
-
-
+        // settings for each stick, used for state machine
+        public static Dictionary<string, StickMapping> stickMap = new Dictionary<string, StickMapping>();
+        
+        // directX object, used for polling
         public static Dictionary<string, StickData> inputSticks = new Dictionary<string, StickData>();
 
     }

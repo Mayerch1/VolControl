@@ -14,10 +14,10 @@ namespace VolControl
 
         private static bool loggedIn;
         private static bool is_muted = false;
-        private static bool ppt_active = false;
+        private static bool ptt_active = false;
 
         private static bool toggle_override = false;
-        private static bool ppt_override = false;
+        private static bool ptt_override = false;
 
 
         private static SoundPlayer soundPlayer =  new SoundPlayer();
@@ -34,7 +34,6 @@ namespace VolControl
                 }
             }
 
-            
         }
 
 
@@ -46,6 +45,8 @@ namespace VolControl
                 loggedIn = false;
             }
         }
+
+
 
         private static void SyncSettings()
         {
@@ -65,6 +66,16 @@ namespace VolControl
             return (value - fromSource) / (toSource - fromSource) * (toTarget - fromTarget) + fromTarget;
         }
 
+
+
+        public static bool GetMuteStatus()
+        {
+            return is_muted;
+        }
+        public static bool GetPttStatus()
+        {
+            return ptt_active;
+        }
 
 
         public static void Potentiometer(int id, int last, int current)
@@ -152,11 +163,12 @@ namespace VolControl
 
         public static void MicStateMachine(bool ppt, bool mute_switch, bool mic_toggle)
         {
-            Login();
-
-
-
-
+            if (!loggedIn)
+            {
+                // Login does check for loggedIn, but this saves call overhead
+                // (this loop is executed at every iteration)
+                Login();
+            }
 
 
             // ppt is overriding everything
@@ -165,8 +177,8 @@ namespace VolControl
                 MicSwitch(false);
                 is_muted = false;
 
-                ppt_active = true;
-                ppt_override = true;
+                ptt_active = true;
+                ptt_override = true;
 
                 toggle_override = false;
                 return;
@@ -175,13 +187,13 @@ namespace VolControl
             {
                 // ensures that mic is muted on ppt release 
                 // even when mic wasn't muted before
-                ppt_active = true;
-                ppt_override = true;
+                ptt_active = true;
+                ptt_override = true;
 
                 toggle_override = false;
                 return;
             }
-            else if(!ppt && ppt_active)
+            else if(!ppt && ptt_active)
             {
                 if (!is_muted)
                 {
@@ -191,7 +203,7 @@ namespace VolControl
                 }
 
                 // keep override active
-                ppt_active = false;
+                ptt_active = false;
                 return;
             }
 
@@ -200,7 +212,7 @@ namespace VolControl
             // toggle cannot override mute_switch in mute state
             if(mute_switch)
             {
-                ppt_override = false;
+                ptt_override = false;
                 toggle_override = false;
 
                 if (!is_muted)
@@ -212,7 +224,7 @@ namespace VolControl
                 return;
             }
             // when mute switch is off toggle could override
-            else if(!mute_switch && !toggle_override && !ppt_override && is_muted)
+            else if(!mute_switch && !toggle_override && !ptt_override && is_muted)
             {
                 MicSwitch(false);
                 is_muted = false;
@@ -223,7 +235,7 @@ namespace VolControl
                 is_muted = !is_muted;
                 MicSwitch(is_muted);
 
-                ppt_override = false;
+                ptt_override = false;
                 toggle_override = true;
                 return;
             }
