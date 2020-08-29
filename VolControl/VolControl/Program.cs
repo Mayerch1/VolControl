@@ -18,25 +18,74 @@ namespace VolControl
 
     class Program
     {
-        public static void LoadSettings()
+        public static void ReloadSettings()
         {
+            Settings.inputSticks.Clear();
+            bool valid = LoadSettings();
+            WindowsTrayIcon.UpdateValidConfigFlag(valid);
+
+            DevicePolling.AquireSticks();
+            WindowsTrayIcon.UpdateTrayIconList(Settings.inputSticks, Settings.stickMap.Count);
+        }
+
+        /// <summary>
+        /// Reload the config from Settings.json
+        /// Invokes Notification on error
+        /// Tries to load when errors in format are present, but still returns failure then
+        /// </summary>
+        /// <returns>false on first failure, even when some settings are loaded</returns>
+        public static bool LoadSettings()
+        {
+            bool validConfig = true;
+
             if (!File.Exists("Settings.json"))
             {
-                return;
+                return false;
             }
 
             var json = System.IO.File.ReadAllText("Settings.json");
-            var parsed = JArray.Parse(json);
 
+            JArray parsed;
+            try
+            {
+                 parsed = JArray.Parse(json);
+            }
+            catch
+            {
+                WindowsTrayIcon.InvalidConfigWarning("Invalid Json detected.");
+                return false;
+            }
+
+            // clear old settings (otherwise deletion on config change not possible)
+            Settings.stickMap.Clear();
+            
 
             foreach(var device in parsed)
             {
                 StickMapping map = new StickMapping();
 
+                if(!(device is JObject))
+                {
+                    WindowsTrayIcon.InvalidConfigWarning("Invalid Parammeters are used");
+                    validConfig = false;
+                    continue;
+                }
+
+
                 string guid = (string)device["guid"];
 
+                
                 if(guid != null)
                 {
+                    if (Settings.stickMap.ContainsKey(guid))
+                    {
+                        // skip this config entry
+                        WindowsTrayIcon.InvalidConfigWarning("Guid " + guid + " is used multiple times.");
+                        validConfig = false;
+                        continue;
+                    }
+
+
                     // toggle switches can be null (not-set)
                     map.ppt = (int?)device["ptt_button"];
                     map.mute_switch = (int?)device["mute_switch"];
@@ -72,204 +121,7 @@ namespace VolControl
 
             }
 
-        }
-
-
-        public static Joystick GetStick(string refGuid)
-        {
-            
-            // Initialize DirectInput
-            var directInput = new DirectInput();
-
-            // Find a Joystick Guid
-            var joystickGuid = Guid.Empty;
-
-
-            foreach (var deviceInstance in directInput.GetDevices())
-            {
-
-                if (deviceInstance.ProductGuid.ToString() == refGuid)
-                {
-                    joystickGuid = deviceInstance.InstanceGuid;
-                    break;
-                }
-            }
-
-
-            // If Joystick not found, throws an error
-            if (joystickGuid == Guid.Empty)
-            {
-                Console.WriteLine("Specified GUID not found.");
-                return null;
-            }
-
-            // Instantiate the joystick
-            var joystick = new Joystick(directInput, joystickGuid);
-            Console.WriteLine("Found Joystick/Gamepad with GUID: {0}", joystickGuid);
-
-
-            // if more than 16 changes occur during samples
-            // the oldest changes get lost
-            joystick.Properties.BufferSize = 8;
-
-            return joystick;
-        }
-
-
-        /// <summary>
-        /// Connect all connected sticks out of the inputSticks list
-        /// </summary>
-        public static int AquireSticks()
-        {
-            int addedSticks = 0;
-            int oldConnectedCount = Settings.inputSticks.Count;
-
-            // don't do anything if every controller in the list is already connected
-            // and if no prev. connected controller was disconnected
-            if(oldConnectedCount == Settings.stickMap.Count)
-            {
-                return addedSticks;
-            }
-
-
-            // try to connect all not-yet connected sticks
-            // do not 'touch' sticks which are fully recognised
-
-            foreach(var pair in Settings.stickMap)
-            {
-                string guid = pair.Key;
-
-
-                // check if the guid is already in use and ignore it
-                if (Settings.inputSticks.ContainsKey(guid)) { 
-                    continue;
-                }
-
-
-                Joystick joystick = GetStick(guid);
-
-                if(joystick != null)
-                {
-                    StickData stickData = new StickData() { stick = joystick };
-
-                    // activate the stick
-                    stickData.stick.Acquire();
-
-                    Settings.inputSticks.Add(guid, stickData);
-                    addedSticks++;
-                }
-            }
-
-            return addedSticks;
-        }
-
-
-
-
-
-        public static void ProcessSticks()
-        {
-
-            // if a single device reports mute, it is overriding all others
-            // therefore this is only set after the loop iteration
-            // -- however ppt is overriding mute
-            bool is_mute = false;
-            bool is_ppt = false;
-
-            // toggle mute does NOT override is_mute or ppt
-            // however it is inverting the mute status
-            bool toggle_mute = false;
-
-            // other settings are overriden based on the saved order
-
-            foreach (var pair in Settings.inputSticks)
-            {
-                StickData stick = pair.Value;
-
-                //stick.currentState.
-
-                if (stick.currentState == null)
-                {
-                    continue; // readout failed somehow (uncaught failure), shouldn't really occur
-                }
-                else if (stick.lastState == null)
-                {
-                    // stick was connected for first time
-                    stick.lastState = stick.currentState;
-                    stick.currentState = null;
-                    continue;
-                }
-                else if (stick.currentState == stick.lastState)
-                {
-                    continue; // no update
-                }
-
-                if (pair.Value.lastState == pair.Value.currentState)
-                {
-                    continue;
-                }
-
-
-
-                // look up mapping for this device
-                // key MUST exist (otherwise inputStick wouldn't list this key
-                StickMapping mapping = Settings.stickMap[pair.Key];
-
-
-                if (mapping.mute_switch is int mute_switch)
-                {
-
-                    // inverted logic, as mic is only active when signal is present
-                    bool is_muted_switch = !stick.currentState.Buttons[mute_switch];
-
-                    is_mute |= is_muted_switch;
-                }
-
-
-
-                // NOTE: ppt is useless when no other mute button is bined
-                if(mapping.ppt is int ppt_btn)
-                {
-                    is_ppt = stick.currentState.Buttons[ppt_btn];
-                }
-
-
-
-                if(mapping.mute_toggle is int mute_toggle)
-                {
-                    bool is_mute_toggled = stick.currentState.Buttons[mute_toggle];
-                    bool is_last_mute_toggled = stick.lastState.Buttons[mute_toggle];
-
-                    if (is_last_mute_toggled != is_mute_toggled)
-                    {
-                        toggle_mute |= is_mute_toggled;
-                    }
-                }
-
-
-
-                // handle all potentiometers
-                foreach(var slider in mapping.slider)
-                {
-                    var lastAxis = stick.GetLastStateByString(slider.Button);
-                    var currAxis = stick.GetCurrentStateByString(slider.Button);
-
-
-                    // only do something when Axis changed more than 10
-                    if(lastAxis is int && currAxis is int && Math.Abs((int)lastAxis - (int)currAxis) > 10)
-                    {
-                        MediaControl.Potentiometer(slider.index, (int)lastAxis, (int)currAxis);
-                    }
-                }
-
-                stick.lastState = stick.currentState;
-                stick.currentState = null;
-
-            }
-
-
-
-            MediaControl.MicStateMachine(is_ppt, is_mute, toggle_mute);
+            return validConfig;
         }
 
 
@@ -277,17 +129,24 @@ namespace VolControl
         public static void FailSafe()
         {
             MediaControl.MicSwitch(true);
+            // failSafe passes state machine, therefore muted icon must be forced
+            WindowsTrayIcon.UpdateTrayIconMic(true, false);
         }
 
 
 
-        static void Main(string[] args)
+        static void Main()
         {
             // OS specific code in this helper
-            WindowsTrayIcon.Init();
-          
-            LoadSettings();
-            int loadedSticks = AquireSticks();
+            // trayIcon runs in other thread, but can  call these handles
+            WindowsTrayIcon.Init(ReloadSettings);
+            Thread.Sleep(100); // wait for notifyThread to be initalised (maybe replace with proper wait)
+
+            bool validConf = LoadSettings();
+            WindowsTrayIcon.UpdateValidConfigFlag(validConf);
+
+
+            int loadedSticks = DevicePolling.AquireSticks();
 
             // do not show notification on app start
             // (only on error)
@@ -318,14 +177,12 @@ namespace VolControl
                         stick.stick.GetCurrentState(ref stick.currentState);
 
                     }
-                    catch(SharpDX.SharpDXException ex)
+                    catch(SharpDX.SharpDXException)
                     {
-                        Console.WriteLine(ex);
                         FailSafe();
 
                         // gc will delete StickData when not referenced anymore
                         Settings.inputSticks.Remove(pair.Key);
-
 
                         // no more than 1 device can be disconnected at a time
                         WindowsTrayIcon.UpdateTrayIconList(Settings.inputSticks, Settings.stickMap.Count);
@@ -339,7 +196,7 @@ namespace VolControl
 
                 // as some buttons can override (like mute)
                 // all HIDs must be processed at the same time
-                ProcessSticks();
+                DevicePolling.ProcessSticks();
 
 
                 int wait_time = 1000 / Settings.pollRateHz;
@@ -359,7 +216,7 @@ namespace VolControl
                 if(elapsed_ms > 30000)
                 {
                     elapsed_ms = 0;
-                    int addedSticks = AquireSticks();
+                    int addedSticks = DevicePolling.AquireSticks();
 
                     if (addedSticks > 0)
                     {

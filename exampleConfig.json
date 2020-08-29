@@ -1,0 +1,18 @@
+[
+	{
+		"guid": "80372341-0000-0000-0000-504944564944",
+		"mute_switch": 0,
+		"sliders": [
+			{"index": 7, "button": "X"},
+			{"index": 6,"button": "Y"},
+			{"index": 0, "button": "Z"},
+			{"index": 1, "button": "RotationX"},
+			{"index": 2, "button": "RotationY"},
+			{"index": 3, "button": "RotationZ"}
+		]
+	},
+	{
+		"guid": "02ff045e-0000-0000-0000-504944564944",
+		"mute_toggle": 1
+	}
+]

@@ -4,58 +4,130 @@ using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
 
+/*
+ * https://ambilykk.com/2019/03/20/system-tray-icon-for-net-core-console-app/
+ */
+
+
 namespace VolControl
 {
     static class WindowsTrayIcon
     {
+
+        // invokes function in Program to reload the settings file
+        public delegate void ReloadSettingsHandler();
+        public static ReloadSettingsHandler ReloadSettings = null;
+
+
         private static NotifyIcon icon = null;
-        private static Icon defaultIcon = new System.Drawing.Icon("res/volume.ico");
-        private static Icon muteIcon = new System.Drawing.Icon("res/mic-mute.ico");
+        private static readonly Icon defaultIcon = new System.Drawing.Icon("res/volume.ico");
+        private static readonly Icon muteIcon = new System.Drawing.Icon("res/mic-mute.ico");
 
 
         private static bool lastMuteStatus = true;
         private static bool lastPttStatus = true;
 
         // this is used to faster update only the mic info
+        private static string invalidConfigString = "";
         private static string micInfoString = "";
         private static string deviceListString = "";
             
 
-        public static void Init()
+        public static void Init(ReloadSettingsHandler reloadHandle)
         {
-            icon = new NotifyIcon();
-            icon.Icon = defaultIcon;
-            icon.Visible = true;
-            icon.BalloonTipTitle = "VolControl";
 
+            ReloadSettings += reloadHandle;
+
+            // tray icon must run in separate thread
+            // otherwise context menu is not functioning
+
+            System.Threading.Thread notifyThread = new System.Threading.Thread(
+                delegate ()
+                {
+                    var context = new ContextMenuStrip();
+
+
+                    context.Items.Add("Reload");
+                    context.Items.Add("Exit");
+                    context.ItemClicked += Context_ItemClicked;
+
+                    icon = new NotifyIcon
+                    {
+                        Icon = defaultIcon,
+                        Visible = true,
+                        BalloonTipTitle = "VolControl",
+                        ContextMenuStrip = context
+                    };
+
+                    System.Windows.Forms.Application.Run();
+                });
+
+            notifyThread.Start();
+
+
+
+            // force update to init the tooltip text
+            // use mic-active and no ptt as default
             UpdateTrayIconMic(false, false);
         }
 
 
 
+        private static void Context_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
+        {
+            if(e.ClickedItem.Text == "Reload")
+            {
+                ReloadSettings?.Invoke();
+            }
+            else if(e.ClickedItem.Text == "Exit"){
+                Environment.Exit(0);
+            }
+        }
+
+        private static void UpdateIconText()
+        {
+            if(icon != null)
+            {
+                icon.Text = invalidConfigString + micInfoString + deviceListString;
+            }
+        }
+       
+
+
         public static void UpdateTrayIconMic(bool isMuted, bool isPtt)
         {
+            if(icon == null)
+            {
+                return;
+            }
+
             if(lastMuteStatus != isMuted || lastPttStatus != isPtt)
             {
                 micInfoString = String.Format("Muted: {0} - PTT: ", isMuted);
-                if (isPtt)
-                {
-                    micInfoString += "Active\n";
-                }
-                else
-                {
-                    micInfoString += "Inactive\n";
-                }
+
                 if (isMuted)
                 {
+                    micInfoString = "Muted - ";
                     icon.Icon = muteIcon;
                 }
                 else
                 {
+                    micInfoString = "Not Muted - ";
                     icon.Icon = defaultIcon;
                 }
 
-                icon.Text = micInfoString + deviceListString;
+
+                if (isPtt)
+                {
+                    micInfoString += "PTT on\n";
+                }
+                else
+                {
+                    micInfoString += "PTT off\n";
+                }
+              
+
+                UpdateIconText();
 
                 lastPttStatus = isPtt;
                 lastMuteStatus = isMuted;
@@ -63,15 +135,45 @@ namespace VolControl
         }
 
 
+
         public static void UpdateTrayIconList(Dictionary<string, StickData> sticks, int configCount)
         {
-            icon.Text = micInfoString;
+            if (icon != null)
+            {
+                icon.Text = micInfoString;
 
-            deviceListString = String.Format("Connected {0}/{1} devices\n", sticks.Count, configCount);
-            icon.Text = micInfoString + deviceListString;
+                deviceListString = String.Format("Connected {0}/{1} devices\n", sticks.Count, configCount);
+                UpdateIconText();
+            }
         }
 
 
+        public static void UpdateValidConfigFlag(bool validConfig)
+        {
+            if (!validConfig)
+            {
+                invalidConfigString = "Invalid Config\n";
+            }
+            else
+            {
+                invalidConfigString = "";
+            }
+
+
+            UpdateIconText();
+        }
+
+
+
+        public static void InvalidConfigWarning(string description)
+        {
+            if(icon != null)
+            {
+                icon.BalloonTipTitle = "VolControl - Invalid Config Detected";
+                icon.BalloonTipText = description;
+                icon.ShowBalloonTip(2000);
+            }
+        }
 
         public static void NoStickWarning(int configCount)
         {
@@ -80,6 +182,7 @@ namespace VolControl
                 icon.BalloonTipTitle = "VolContorl - No Device Found";
                 icon.BalloonTipText = String.Format("0/{0} devices are active", configCount);
                 icon.ShowBalloonTip(1000);
+                
             }
         }
 
