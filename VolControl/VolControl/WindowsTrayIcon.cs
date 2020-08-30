@@ -19,6 +19,7 @@ namespace VolControl
         public static ReloadSettingsHandler ReloadSettings = null;
 
 
+
         private static NotifyIcon icon = null;
         private static readonly Icon defaultIcon = new System.Drawing.Icon("res/volume.ico");
         private static readonly Icon muteIcon = new System.Drawing.Icon("res/mic-mute.ico");
@@ -44,19 +45,22 @@ namespace VolControl
             System.Threading.Thread notifyThread = new System.Threading.Thread(
                 delegate ()
                 {
-                    var context = new ContextMenuStrip();
+                    
 
+                    var contextStrip = new ContextMenuStrip();
 
-                    context.Items.Add("Reload");
-                    context.Items.Add("Exit");
-                    context.ItemClicked += Context_ItemClicked;
+                    
+                    contextStrip.Items.Add("Reload");
+                    contextStrip.Items.Add("-");
+                    contextStrip.Items.Add("Exit");
+                    contextStrip.ItemClicked += Context_ItemClicked;
 
                     icon = new NotifyIcon
                     {
                         Icon = defaultIcon,
                         Visible = true,
                         BalloonTipTitle = "VolControl",
-                        ContextMenuStrip = context
+                        ContextMenuStrip = contextStrip
                     };
 
                     System.Windows.Forms.Application.Run();
@@ -75,6 +79,7 @@ namespace VolControl
 
         private static void Context_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
         {
+         
             if(e.ClickedItem.Text == "Reload")
             {
                 ReloadSettings?.Invoke();

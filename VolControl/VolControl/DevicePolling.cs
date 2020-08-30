@@ -14,7 +14,6 @@ namespace VolControl
             var directInput = new DirectInput();
             var targetGuid = new Guid(refGuid);
 
-
             Joystick joystick;
             try
             {
@@ -27,8 +26,6 @@ namespace VolControl
                 Console.WriteLine("Joystick with [" + refGuid + "] not connected");
                 joystick = null;
             }
-
-
 
             return joystick;
         }

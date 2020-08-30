@@ -1,13 +1,18 @@
-VolControl
-
-# ButtonBox
-
 # VolControl
-The VolControl is running on your windows PC as a windows application. It offers a tray icon to indicate its own status and will show notification whenever a device is added/removed (hot-plug).
+This software manipulates the settings of Voicemeeter, like volume sliders for different audio lanes or the mute-status of your microphone.
+The input can be any HID-device like a Joystick, a Wheel or your Arduino acting as HID-controller.
 
-The Application is configured with the file `Settings.json`, which should be located in the directory as the executable.
+## ButtonBox
+The main use-case is the use of a dedicated button-box in combination with an Arduino.
+The code for my own button-box is found in [ButtonBox](/ButtonBox). The layout and circuit is shown in [circuit.fzz](circuit.fzz) (Frizting).
 
-### Settings Format
+## VolControl
+The VolControl software is running on your Windows PC as a Windows application. It offers a tray icon to indicate its own status and will show notification whenever a device is added/removed (hot-plug).
+
+The Application is configured with the file `Settings.json`, which should be located in the same directory as the executable.
+
+
+### Settings.json Format
 All used devices are defined within a json list
 ```json
 [
@@ -36,6 +41,8 @@ The values of those is the index of the required Button as 0-offset. (The Window
 	{
 		"guid": "80372341-0000-0000-0000-504944564944",
 		"mute_switch": 0,
+		"ptt_button": 1,
+		"mute_toggle": 2,
 		"sliders": [
 			{"index": 7, "button": "X"},
 			{"index": 6,"button": "Y"},
@@ -46,7 +53,7 @@ The values of those is the index of the required Button as 0-offset. (The Window
 		]
 	},
     {
-        
+       "placeholder": "replace with valid entry or remove" 
     }
 ]
 ```

@@ -28,6 +28,10 @@ namespace VolControl
             WindowsTrayIcon.UpdateTrayIconList(Settings.inputSticks, Settings.stickMap.Count);
         }
 
+
+   
+
+
         /// <summary>
         /// Reload the config from Settings.json
         /// Invokes Notification on error

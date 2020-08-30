@@ -89,7 +89,7 @@ namespace VolControl
             Login();
 
 
-            float db = 0;
+            float db;
 
 
             // mid point is at 3/4 of poti
