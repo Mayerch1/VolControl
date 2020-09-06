@@ -20,10 +20,11 @@ Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_GAMEPAD,
 #define POTI_1_PIN A0
 #define POTI_2_PIN A1
 
-#define SWITCH_MUTE 16
-#define BUTTON_MODE 10
+#define SWITCH_MUTE 14
+#define BUTTON_MODE 16
 
-#define RGB_RED 4
+// rgb led uses pwm pins
+#define RGB_RED 3
 #define RGB_BLUE 5
 #define RGB_GREEN 6
 
