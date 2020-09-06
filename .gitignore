@@ -6,6 +6,9 @@ VoicemeeterRemoteAPI_Pack8/*
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+VolControl.zip
+HIDList.zip
+
 # User-specific files
 *.rsuser
 *.suo

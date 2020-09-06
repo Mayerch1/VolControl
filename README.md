@@ -21,7 +21,7 @@ The Application is configured with the file `Settings.json`, which should be loc
 
 
 ## Installation
-[Download](/releases) the latest version of [VolControl](/releases) and unpack the VolControl.zip into your installation location.
+[Download](https://github.com/Mayerch1/VolControl/releases) the latest version of [VolControl](https://github.com/Mayerch1/VolControl/releases) and unpack the VolControl.zip into your installation location.
 
 Next open your startup folder by hitting `windows+r` and typing `shell::startup` followed by your return key.
 Now add a shortcut to VolControl.exe into this startup folder.
