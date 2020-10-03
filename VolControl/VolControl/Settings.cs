@@ -51,6 +51,12 @@ namespace VolControl
             public string Button;
         }
 
+        public class SoundTrigger
+        {
+            public int index;
+            public string soundFile;
+        }
+
 
         // Button index, cannot be an axis
         public int? mute_switch = null;
@@ -58,6 +64,7 @@ namespace VolControl
         public int? mute_toggle = null;
 
         public List<Slider> slider = new List<Slider>();
+        public List<SoundTrigger> soundTriggers = new List<SoundTrigger>();
     }
 
 

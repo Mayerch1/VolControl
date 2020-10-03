@@ -120,6 +120,29 @@ namespace VolControl
 
                         }
                     }
+
+
+                    // iterate over all sound triggers
+                    // same procedure as for sliders
+                    var triggerObjs = device["sound_triggers"];
+                    if(triggerObjs is JArray triggers)
+                    {
+                        foreach(var trigger in triggers)
+                        {
+                            int? idx = (int?)trigger["index"];
+                            string file = (string)trigger["file"];
+
+                            if(idx != null && file != null)
+                            {
+                                map.soundTriggers.Add(new StickMapping.SoundTrigger
+                                {
+                                    index = (int)idx,
+                                    soundFile = file
+                                });
+                            }
+                        }
+                    }
+
                     Settings.stickMap.Add(guid, map);
                 }
 

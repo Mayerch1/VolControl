@@ -71,6 +71,11 @@ namespace VolControl
         private static extern Int32 VBVMR_SetParameterFloat([In] byte[] szParamName, [In] float Value);
 
 
+
+        [DllImport(dllPath, CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall)]
+        private static extern Int32 VBVMR_SetParameterStringA([In] byte[] szParamName, [In] byte[] szString);
+
+
         [DllImport(dllPath, CallingConvention = CallingConvention.StdCall)]
         private static extern Int32 VBVMR_IsParametersDirty();
 
@@ -119,6 +124,21 @@ namespace VolControl
             return res;
         }
 
+
+        /// <summary>
+        /// Set a generic parameter in Voicemeeter syntax
+        /// </summary>
+        /// <param name="name">query command</param>
+        /// <param name="value">value to be set</param>
+        /// <returns></returns>
+        public static Int32 SetParameterString(string name, string value)
+        {
+            byte[] buffName = StringToBytes(name);
+            byte[] buffValue = StringToBytes(value);
+
+            Int32 res = VBVMR_SetParameterStringA(buffName, buffValue);
+            return res;
+        }
 
         /// <summary>
         /// Get a generic parameter using Voicemeeter syntax
@@ -209,6 +229,27 @@ namespace VolControl
             string name = "Strip[" + channel + "].gain";
             return GetParameterFloat(name, ref gain);
         }
+
+
+
+        public static Int32 SetRecorderFile(string file)
+        {
+            return SetParameterString("Recorder.load", file);
+        }
+
+
+        public static Int32 SetRecorderPlaying(bool isPlaying)
+        {
+            if (isPlaying)
+            {
+                return SetParameterFloat("recorder.play", 1);
+            }
+            else
+            {
+                return SetParameterFloat("recorder.stop", 1);
+            }
+        }
+
 
     }
 }

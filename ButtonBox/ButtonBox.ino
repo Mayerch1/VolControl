@@ -6,7 +6,7 @@
 #include <Joystick.h>  // Use MHeironimus's Joystick library
 
 Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_GAMEPAD,
-	1, 0,                  // Button Count, Hat Switch Count
+	2, 0,                  // Button Count, Hat Switch Count
 	true, true, true,    // No X, Y, or Z axes
 	true, true, true,    // No Rx, Ry, or Rz
 	false, false,           // No rudder or throttle
@@ -21,7 +21,9 @@ Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_GAMEPAD,
 #define POTI_2_PIN A1
 
 #define SWITCH_MUTE 14
-#define BUTTON_MODE 16
+
+// #define BUTTON_MODE GENERIC_BUTTON // replaces generic button with mode toggle (not reported to OS anymore)
+#define GENERIC_BUTTON 16
 
 // rgb led uses pwm pins
 #define RGB_RED 3
@@ -42,7 +44,7 @@ Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_GAMEPAD,
 
 
 JoystickButton muteButton(0);
-JoystickButton modeButton(1);
+JoystickButton genericButton(1);
 
 
 void set_rgb_led(int r, int g, int b);
@@ -54,7 +56,7 @@ void setup() {
     pinMode(POTI_2_PIN, INPUT);
 
     pinMode(SWITCH_MUTE, INPUT_PULLUP);
-    pinMode(BUTTON_MODE, INPUT_PULLUP);
+    pinMode(GENERIC_BUTTON, INPUT_PULLUP);
 
     
     pinMode(RGB_RED, OUTPUT);
@@ -86,7 +88,7 @@ void loop() {
 
     uint16_t pot1, pot2;
     uint8_t mic_active;
-    uint8_t mode_pressed;
+    uint8_t generic_pressed;
     uint32_t current_time_ms;
 
 
@@ -101,7 +103,7 @@ void loop() {
 
     // pull up resistor -> invert
     mic_active = !digitalRead(SWITCH_MUTE);
-    mode_pressed = !digitalRead(BUTTON_MODE);
+    generic_pressed = !digitalRead(GENERIC_BUTTON);
 
 
 
@@ -158,7 +160,6 @@ void loop() {
     /*       publish to computer          */
     /**************************************/
 
-
 	// mode based button mappings
     switch(mode){
         case 0:
@@ -176,9 +177,13 @@ void loop() {
     }
 
 
+    #ifndef BUTTON_MODE
+        genericButton.set(generic_pressed);
+    #endif
+
+
     // universal button mappings
     muteButton.set(mic_active);
-    modeButton.set(mode_pressed);
 
 
     
@@ -196,17 +201,26 @@ void loop() {
         digitalWrite(POTI_2_LED, LOW);
     }
     else{
-        switch(mode){
-            case 0:
-                set_rgb_led(1, 0, 0);
-                break;
-            case 1:
-                set_rgb_led(0, 1, 0);
-                break;
-            case 2:
-                set_rgb_led(0, 0, 1);
-                break;
-        }
+        #ifdef BUTTON_MODE
+            switch(mode){
+                case 0:
+                    set_rgb_led(1, 0, 0);
+                    break;
+                case 1:
+                    set_rgb_led(0, 1, 0);
+                    break;
+                case 2:
+                    set_rgb_led(0, 0, 1);
+                    break;
+            }
+        #else
+            if(generic_pressed){
+                set_rgb_led(1,0,0);
+            }
+            else{
+                set_rgb_led(0,0,0);
+            }
+        #endif
 
         // update leds based on settings
         if(mic_active){
@@ -236,20 +250,21 @@ void loop() {
     /**************************************/
     /*      handle mode switch            */
     /**************************************/
+    #ifdef BUTTON_MODE
+        // toggle mode switch, force update oled in any case
+        if(mode_pressed_last != mode_pressed && mode_pressed){
+            mode = mode == 2 ? 0 : mode + 1;
 
-    // toggle mode switch, force update oled in any case
-    if(mode_pressed_last != mode_pressed && mode_pressed){
-        mode = mode == 2 ? 0 : mode + 1;
+            delay(150); // de-bounce
 
-        delay(150); // de-bounce
+            // this counts as update aswell
+            last_update_ms = millis();        
+        }
+        
 
-        // this counts as update aswell
-        last_update_ms = millis();        
-    }
-    
-
-    // update last-state vars
-    mode_pressed_last = mode_pressed;
+        // update last-state vars
+        mode_pressed_last = mode_pressed;
+    #endif
 }
 
 

@@ -178,6 +178,21 @@ namespace VolControl
                     }
                 }
 
+
+                // handle all sound triggers
+                foreach(var trigger in mapping.soundTriggers)
+                {
+                    var lastTrigger = stick.lastState.Buttons[trigger.index];
+                    var currentTrigger = stick.currentState.Buttons[trigger.index];
+
+                    if(currentTrigger && !lastTrigger)
+                    {
+                        // replay the matching file, will abort all other replays
+                        MediaControl.TogglePlayFile(trigger.soundFile);
+                    }
+
+                }
+
                 stick.lastState = stick.currentState;
                 stick.currentState = null;
 

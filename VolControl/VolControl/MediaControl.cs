@@ -20,6 +20,7 @@ namespace VolControl
         private static bool ptt_override = false;
 
 
+
         private static SoundPlayer soundPlayer =  new SoundPlayer();
 
         private static void Login()
@@ -238,6 +239,54 @@ namespace VolControl
                 ptt_override = false;
                 toggle_override = true;
                 return;
+            }
+        }
+
+
+
+        /// <summary>
+        /// Plays the specified file (if it exists)
+        /// If voicemeeter is already playing a file, it is stopped
+        /// </summary>
+        /// <param name="file">path to the file, can be null to stop the replay</param>
+        public static void TogglePlayFile(string file)
+        {
+            Int32 sucess;
+            // turn off any atcive replay
+            if(file == null)
+            {
+                sucess = VoiceMeeterRemoteAPI.SetRecorderPlaying(false);
+
+                if(sucess != 0)
+                {
+                    SystemSounds.Asterisk.Play();
+                }
+
+                return;
+            }
+
+
+
+            if (!File.Exists(file))
+            {
+                SystemSounds.Asterisk.Play();
+                return;
+            }
+
+            sucess = VoiceMeeterRemoteAPI.SetRecorderFile(file);
+
+            if (sucess != 0)
+            {
+                SystemSounds.Asterisk.Play();
+                return;
+            }
+
+            sucess = VoiceMeeterRemoteAPI.SetRecorderPlaying(true);
+            
+
+            if(sucess != 0)
+            {
+                SystemSounds.Asterisk.Play();
             }
         }
 
