@@ -47,27 +47,33 @@ Each Element needs to hold a `guid` element, which identifies this device.
 The `guid` can be obtained by running the [HIDList](/HIDList) program. This program simply outputs the id of e
 very connected HID device.
 
-The available options are
-* mute_switch
-* mute_toggle
-* ptt_button
+The buttons are configured as follows, where the `index` is the index of the required Button as 0-offset. (The Windows game controller settings show the buttons as 1-offset). 
+The effected audio lane is set by the `lane` property, and is aswell saved as 0-offset.
 
-The values of those is the index of the required Button as 0-offset. (The Windows game controller settings show the buttons as 1-offset). 
+It is possible to configure the same button for multiple lanes, simply add 2 different objects to the config, which are referring the same `index`.
 
 ```json
 [
 	{
 		"guid": "80372341-0000-0000-0000-504944564944",
-		"mute_switch": 0,
-		"ptt_button": 1,
-		"mute_toggle": 2,
+		"mute_switches": [
+			{"index": 0, "lane": 0},
+			{"index": 0, "lane": 1},
+			{"index": 5, "lane": 2}
+		],
+		"ppt_switches": [
+			{"index": 1, "lane": 0}
+		],
+		"mute_toggles": [
+			{"index": 2, "lane": 0}
+		],
 		"sliders": [
-			{"index": 7, "button": "X"},
-			{"index": 6,"button": "Y"},
-			{"index": 0, "button": "Z"},
-			{"index": 1, "button": "RotationX"},
-			{"index": 2, "button": "RotationY"},
-			{"index": 3, "button": "RotationZ"}
+			{"lane": 7, "button": "X"},
+			{"lane": 6,"button": "Y"},
+			{"lane": 0, "button": "Z"},
+			{"lane": 1, "button": "RotationX"},
+			{"lane": 2, "button": "RotationY"},
+			{"lane": 3, "button": "RotationZ"}
 		]
 	},
     {
@@ -76,9 +82,13 @@ The values of those is the index of the required Button as 0-offset. (The Window
 ]
 ```
 
+### Failsafe
+
+If a configured controller gets unplugged, the application will mute the microphone line with index 0. At the current state it's not possible to fail-safe other audio lanes.
+
 ### Sliders
 Sliders are configured within the `slider` list.
-Each element of the slider holds an `index` which corresponds to the matching slider in Voicemeter (0-offset) and the `button` Key configures the used axis for this Slider.
+Each element of the slider holds an `lane` which corresponds to the matching slider in Voicemeter (0-offset) and the `button` Key configures the used axis for this Slider.
 
 Allowed Values for `button` is any axis of your HID-Device.
 

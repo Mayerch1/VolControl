@@ -13,11 +13,11 @@ namespace VolControl
     {
 
         private static bool loggedIn;
-        private static bool is_muted = false;
-        private static bool ptt_active = false;
+        private static bool[] is_muted = new bool[8];
+        private static bool[] ptt_active = new bool[8];
 
-        private static bool toggle_override = false;
-        private static bool ptt_override = false;
+        private static bool[] toggle_override = new bool[8];
+        private static bool[] ptt_override = new bool[8];
 
 
 
@@ -51,7 +51,8 @@ namespace VolControl
 
         private static void SyncSettings()
         {
-            VoiceMeeterRemoteAPI.GetMute(Settings.micLane, ref MediaControl.is_muted);
+            // TODO: for all lanes?
+            VoiceMeeterRemoteAPI.GetMute(0, ref MediaControl.is_muted[0]);
         }
 
 
@@ -69,13 +70,13 @@ namespace VolControl
 
 
 
-        public static bool GetMuteStatus()
+        public static bool GetMuteStatus(int lane = 0)
         {
-            return is_muted;
+            return is_muted[lane];
         }
-        public static bool GetPttStatus()
+        public static bool GetPttStatus(int lane = 0)
         {
-            return ptt_active;
+            return ptt_active[lane];
         }
 
 
@@ -114,7 +115,7 @@ namespace VolControl
 
 
             VoiceMeeterRemoteAPI.SetGain(id, db);
-            //onsole.WriteLine(String.Format("Set gain of {0} to {1}", id, db));
+            // Console.WriteLine(String.Format("Set gain of {0} to {1}", id, db));
         }
 
 
@@ -123,7 +124,7 @@ namespace VolControl
         /// Checks with current state of Voicemeeter and acts on change
         /// </summary>
         /// <param name="is_mute">true for muting the mic</param>
-        public static void MicSwitch(bool is_mute)
+        public static void MicSwitch(int lane, bool is_mute)
         {
 
             Login();
@@ -131,7 +132,7 @@ namespace VolControl
             if (is_mute)
             {
                 Login();
-                var succes = VoiceMeeterRemoteAPI.SetMute(Settings.micLane, true);
+                var succes = VoiceMeeterRemoteAPI.SetMute(lane, true);
                 if (succes == 0)
                 {
                     PlaySound(Settings.MuteSound);
@@ -144,7 +145,7 @@ namespace VolControl
             else
             {
                 Login();
-                var succes = VoiceMeeterRemoteAPI.SetMute(Settings.micLane, false);
+                var succes = VoiceMeeterRemoteAPI.SetMute(lane, false);
 
                 if (succes == 0)
                 {
@@ -162,7 +163,15 @@ namespace VolControl
 
 
 
-        public static void MicStateMachine(bool ppt, bool mute_switch, bool mic_toggle)
+        /// <summary>
+        /// State machine for microphone state
+        /// Handles each mic-line independent of the others
+        /// All arrays must be of the same dimension (8)
+        /// </summary>
+        /// <param name="ppt">array of len 8</param>
+        /// <param name="mute_switch">array of len 8</param>
+        /// <param name="mic_toggle">array of len 8</param>
+        public static void MicStateMachine(bool[] ppt, bool[] mute_switch, bool[] mic_toggle)
         {
             if (!loggedIn)
             {
@@ -171,74 +180,76 @@ namespace VolControl
                 Login();
             }
 
-
-            // ppt is overriding everything
-            if(ppt && is_muted)
+            for (int i = 0; i < ppt.Length; i++)
             {
-                MicSwitch(false);
-                is_muted = false;
-
-                ptt_active = true;
-                ptt_override = true;
-
-                toggle_override = false;
-                return;
-            }
-            else if(ppt && !is_muted)
-            {
-                // ensures that mic is muted on ppt release 
-                // even when mic wasn't muted before
-                ptt_active = true;
-                ptt_override = true;
-
-                toggle_override = false;
-                return;
-            }
-            else if(!ppt && ptt_active)
-            {
-                if (!is_muted)
+                // ppt is overriding everything
+                if (ppt[i] && is_muted[8])
                 {
-                    // ppt forces into mute state, ignoring other values
-                    MicSwitch(true);
-                    is_muted = true;
+                    MicSwitch(i, false);
+                    is_muted[i] = false;
+
+                    ptt_active[i] = true;
+                    ptt_override[i] = true;
+
+                    toggle_override[i] = false;
+                    continue;
+                }
+                else if (ppt[i] && !is_muted[i])
+                {
+                    // ensures that mic is muted on ppt release 
+                    // even when mic wasn't muted before
+                    ptt_active[i] = true;
+                    ptt_override[i] = true;
+
+                    toggle_override[i] = false;
+                    continue;
+                }
+                else if (!ppt[i] && ptt_active[i])
+                {
+                    if (!is_muted[i])
+                    {
+                        // ppt forces into mute state, ignoring other values
+                        MicSwitch(i, true);
+                        is_muted[i] = true;
+                    }
+
+                    // keep override active
+                    ptt_active[i] = false;
+                    continue;
                 }
 
-                // keep override active
-                ptt_active = false;
-                return;
-            }
 
 
-
-            // toggle cannot override mute_switch in mute state
-            if(mute_switch)
-            {
-                ptt_override = false;
-                toggle_override = false;
-
-                if (!is_muted)
+                // toggle cannot override mute_switch in mute state
+                if (mute_switch[i])
                 {
-                    MicSwitch(true);
-                    is_muted = true;
+                    ptt_override[i] = false;
+                    toggle_override[i] = false;
+
+                    if (!is_muted[i])
+                    {
+                        MicSwitch(i, true);
+                        is_muted[i] = true;
+                    }
+
+                    continue;
                 }
+                // when mute switch is off toggle could override
+                else if (!mute_switch[i] && !toggle_override[i] && !ptt_override[i] && is_muted[i])
+                {
+                    MicSwitch(i, false);
+                    is_muted[i] = false;
+                    continue;
+                }
+                else if (mic_toggle[i])
+                {
+                    is_muted[i] = !is_muted[i];
+                    MicSwitch(i, is_muted[i]);
 
-                return;
-            }
-            // when mute switch is off toggle could override
-            else if(!mute_switch && !toggle_override && !ptt_override && is_muted)
-            {
-                MicSwitch(false);
-                is_muted = false;
-                return;
-            }
-            else if (mic_toggle)
-            {
-                is_muted = !is_muted;
-                MicSwitch(is_muted);
-
-                ptt_override = false;
-                toggle_override = true;
-                return;
+                    ptt_override[i] = false;
+                    toggle_override[i] = true;
+                    continue;
+                }
             }
         }
 

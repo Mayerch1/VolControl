@@ -89,12 +89,12 @@ namespace VolControl
             // if a single device reports mute, it is overriding all others
             // therefore this is only set after the loop iteration
             // -- however ppt is overriding mute
-            bool is_mute = false;
-            bool is_ppt = false;
+            bool[] is_mute = new bool[8];
+            bool[] is_ppt = new bool[8];
 
             // toggle mute does NOT override is_mute or ppt
             // however it is inverting the mute status
-            bool toggle_mute = false;
+            bool[] toggle_mute = new bool[8];
 
             // other settings are overriden based on the saved order
 
@@ -131,34 +131,30 @@ namespace VolControl
                 // key MUST exist (otherwise inputStick wouldn't list this key
                 StickMapping mapping = Settings.stickMap[pair.Key];
 
-
-                if (mapping.mute_switch is int mute_switch)
+                foreach(var muteSwitch in mapping.muteSwitches)
                 {
-
                     // inverted logic, as mic is only active when signal is present
-                    bool is_muted_switch = !stick.currentState.Buttons[mute_switch];
-
-                    is_mute |= is_muted_switch;
+                    bool is_muted_switch = !stick.currentState.Buttons[muteSwitch.index];
+                    is_mute[muteSwitch.lane] |= is_muted_switch;
                 }
-
 
 
                 // NOTE: ppt is useless when no other mute button is bined
-                if (mapping.ppt is int ppt_btn)
+                foreach (var pptSwitch in mapping.ppts)
                 {
-                    is_ppt |= stick.currentState.Buttons[ppt_btn];
+                    // inverted logic, as mic is only active when signal is present
+                    is_ppt[pptSwitch.lane] |= stick.currentState.Buttons[pptSwitch.index];
                 }
 
 
-
-                if (mapping.mute_toggle is int mute_toggle)
+                foreach (var muteToggle in mapping.muteToggles)
                 {
-                    bool is_mute_toggled = stick.currentState.Buttons[mute_toggle];
-                    bool is_last_mute_toggled = stick.lastState.Buttons[mute_toggle];
+                    bool is_mute_toggled = stick.currentState.Buttons[muteToggle.index];
+                    bool is_last_mute_toggled = stick.lastState.Buttons[muteToggle.index];
 
                     if (is_last_mute_toggled != is_mute_toggled)
                     {
-                        toggle_mute |= is_mute_toggled;
+                        toggle_mute[muteToggle.lane] |= is_mute_toggled;
                     }
                 }
 

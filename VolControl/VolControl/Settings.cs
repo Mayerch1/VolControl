@@ -57,11 +57,17 @@ namespace VolControl
             public string soundFile;
         }
 
+        public class MuteBtn
+        {
+            // Button index, cannot be an axis
+            public int index;
+            public int lane;
+        }
 
-        // Button index, cannot be an axis
-        public int? mute_switch = null;
-        public int? ppt = null; // push-to-talk
-        public int? mute_toggle = null;
+
+        public List<MuteBtn> muteSwitches = new List<MuteBtn>();
+        public List<MuteBtn> ppts = new List<MuteBtn>(); // push-to-talk
+        public List<MuteBtn> muteToggles = new List<MuteBtn>();
 
         public List<Slider> slider = new List<Slider>();
         public List<SoundTrigger> soundTriggers = new List<SoundTrigger>();
@@ -75,7 +81,6 @@ namespace VolControl
 
 
         public const int pollRateHz = 10;
-        public const int micLane = 0;
 
 
         // settings for each stick, used for state machine

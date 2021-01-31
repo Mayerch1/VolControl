@@ -90,10 +90,63 @@ namespace VolControl
                     }
 
 
-                    // toggle switches can be null (not-set)
-                    map.ppt = (int?)device["ptt_button"];
-                    map.mute_switch = (int?)device["mute_switch"];
-                    map.mute_toggle = (int?)device["mute_toggle"];
+                    var muteSwitchObj = device["mute_switches"];
+                    if(muteSwitchObj is JArray mSwitches)
+                    {
+                        foreach(var btn in mSwitches)
+                        {
+                            int? idx = (int?)btn["index"];
+                            int? lane = (int?)btn["lane"];
+
+                            if(idx != null && lane != null && lane < 8)
+                            {
+                                map.muteSwitches.Add(new StickMapping.MuteBtn
+                                {
+                                    index = (int)idx,
+                                    lane = (int)lane
+                                });
+                            }
+                        }
+                    }
+
+
+                    var pptSwitches = device["ppt_switches"];
+                    if (pptSwitches is JArray pSwitches)
+                    {
+                        foreach (var btn in pSwitches)
+                        {
+                            int? idx = (int?)btn["index"];
+                            int? lane = (int?)btn["lane"];
+
+                            if (idx != null && lane != null && lane < 8)
+                            {
+                                map.ppts.Add(new StickMapping.MuteBtn
+                                {
+                                    index = (int)idx,
+                                    lane = (int)lane
+                                });
+                            }
+                        }
+                    }
+
+                    var muteToggleObj = device["mute_toggles"];
+                    if (muteToggleObj is JArray mToggles)
+                    {
+                        foreach (var btn in mToggles)
+                        {
+                            int? idx = (int?)btn["index"];
+                            int? lane = (int?)btn["lane"];
+
+                            if (idx != null && lane != null && lane < 8)
+                            {
+                                map.muteToggles.Add(new StickMapping.MuteBtn
+                                {
+                                    index = (int)idx,
+                                    lane = (int)lane
+                                });
+                            }
+                        }
+                    }
 
 
                     // iterate over slider array
@@ -103,7 +156,7 @@ namespace VolControl
                     {
                         foreach(var slider in sliders)
                         {
-                            int? idx = (int?)slider["index"];
+                            int? idx = (int?)slider["lane"];
                             string btn = (string)slider["button"];
 
 
@@ -155,7 +208,9 @@ namespace VolControl
 
         public static void FailSafe()
         {
-            MediaControl.MicSwitch(true);
+            // TODO: failsafe for all lanes?
+            MediaControl.MicSwitch(0, true);
+
             // failSafe passes state machine, therefore muted icon must be forced
             WindowsTrayIcon.UpdateTrayIconMic(true, false);
         }
