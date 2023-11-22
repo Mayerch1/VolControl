@@ -1,0 +1,6 @@
+{
+    "board": "arduino:avr:micro",
+    "programmer": "avrisp",
+    "port": "COM8",
+    "sketch": "FansStandalone.ino"
+}
